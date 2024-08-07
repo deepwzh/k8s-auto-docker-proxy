@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  k8s-docker-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # image: my-poetry-app:latest
+    # container_name: my-poetry-app-container
+    volumes:
+      - ~/.kube:/root/.kube
+    # command: ["poetry", "run", "python", "main.py"]
+    environment:
+      DOCKER_PROXY_URL: "dockerpull.gateway.example"
+      NO_PROXY_DOCKER_DOMAIN: "harbor.example.com"
+      KUBE_FLEDGED_NAMESPACE: "kube-fledged"
+    networks:
+    - docker-proxy
+  crproxy:
+    image: dockerpull.gateway.xgjoy.org/ghcr.io/daocloud/crproxy/crproxy:v0.10.0
+    environment:
+      - https_proxy=http://127.0.0.1:7890
+      - TZ=Asia/Shanghai
+        #ports:
+        #  - "8088:8080" # 假设服务运行在端口8080，根据实际情况调整
+    restart: always
+    networks:
+    - docker-proxy
+  registry:
+    image: dockerpull.gateway.xgjoy.org/docker.io/library/registry
+    environment:
+      - REGISTRY_STORAGE=filesystem
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data/registry
+        #- REGISTRY_STORAGE_S3_ENCRYPT=true
+      - REGISTRY_PROXY_REMOTEURL=http://crproxy:8080
+        #- REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./registry:/data/registry
+    networks:
+    - docker-proxy
+    restart: always
+networks:
+  docker-proxy:

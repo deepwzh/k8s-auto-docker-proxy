@@ -158,7 +158,7 @@ class AutoDockerImagePull():
                 image_cache = self.create_image_cache(node, list(images))
                 self.logger.debug(f"{image_cache=}")
                 self.apply_image_cache(image_cache)
-            time.sleep(10)
+            time.sleep(self.image_check_interval)
 
 
 def main():
@@ -170,10 +170,10 @@ def main():
     if not docker_proxy_url_env:
         print("DOCKER_PROXY_URL is required")
         return
-    no_proxy_docker_domain_env = os.getenv('NO_PROXY_DOCKER_DOMAIN')
+    no_proxy_docker_domain_env = os.getenv('NO_PROXY_DOCKER_DOMAIN', "")
     kube_fledged_namespace = os.getenv("KUBE_FLEDGED_NAMESPACE", "kube-fledged")
     image_check_interval = os.getenv("IMAGE_CHECK_INTERVAL", 10)
-    
+
     image_puller = AutoDockerImagePull(proxy_url=docker_proxy_url_env, no_proxy_domain=no_proxy_docker_domain_env.split(","), kube_fledged_namespace=kube_fledged_namespace, image_check_interval=image_check_interval)
     image_puller.run()
     
