@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  k8s-docker-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # image: my-poetry-app:latest
+    # container_name: my-poetry-app-container
+    volumes:
+      - ~/.kube:/root/.kube
+    # command: ["poetry", "run", "python", "main.py"]
+    environment:
+      DOCKER_PROXY_URL: "dockerpull.gateway.example"
+      NO_PROXY_DOCKER_DOMAIN: "harbor.example.com"
+      KUBE_FLEDGED_NAMESPACE: "kube-fledged"

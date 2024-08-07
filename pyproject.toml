@@ -8,7 +8,14 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
+kubernetes = "^30.1.0"
+python-dotenv = "^1.0.1"
 
+
+[[tool.poetry.source]]
+name = "mirrors"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
+priority = "primary"
 
 [build-system]
 requires = ["poetry-core"]
