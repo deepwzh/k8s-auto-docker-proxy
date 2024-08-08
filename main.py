@@ -1,4 +1,5 @@
 import os
+import signal
 import time
 from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
@@ -21,7 +22,11 @@ class AutoDockerImagePull():
         self.image_check_interval = image_check_interval
         self.logger  = logging.getLogger(__name__)
         self.logger.setLevel(log_level)
-    
+        self.nodes = set()
+        
+        signal.signal(signal.SIGINT, self.clean)
+        signal.signal(signal.SIGTERM, self.clean)
+
     def get_image_pull_state_info(self, pod):
         """
         检查 Pod 是否在镜像拉取阶段
@@ -124,6 +129,27 @@ class AutoDockerImagePull():
     def is_omit_image(self, image: str):
         return self.get_image_domain(image) in self.no_proxy_domains
     
+    def clean(self, signum, frame):
+            self.logger.info("clean up")
+            for node in self.nodes:
+                name = f"imagecache-node-{node}"
+                api_instance = client.CustomObjectsApi()
+                try:
+                    api_instance.delete_namespaced_custom_object(
+                        group="kubefledged.io",
+                        version="v1alpha2",
+                        namespace="kube-fledged",
+                        plural="imagecaches",
+                        name=name
+                    )
+                    self.logger.info(f"ImageCache deleted: {name}")
+                except ApiException as e:
+                    if e.status == 404:
+                        self.logger.info(f"ImageCache {name} not found")
+                    else:
+                        self.logger.error(f"Exception when deleting ImageCache: {e}")
+            exit(0)
+
     def run(self):
         self.logger.info("Start watching pods")
         w = watch.Watch()
@@ -154,11 +180,13 @@ class AutoDockerImagePull():
             if not items:
                 continue
             for node, images in items.items():
+                self.nodes.add(node)
                 self.logger.info(f"commit pull task, {node=}, {images=}")
                 image_cache = self.create_image_cache(node, list(images))
                 self.logger.debug(f"{image_cache=}")
                 self.apply_image_cache(image_cache)
             time.sleep(self.image_check_interval)
+
 
 
 def main():
@@ -176,6 +204,7 @@ def main():
 
     image_puller = AutoDockerImagePull(proxy_url=docker_proxy_url_env, no_proxy_domain=no_proxy_docker_domain_env.split(","), kube_fledged_namespace=kube_fledged_namespace, image_check_interval=image_check_interval)
     image_puller.run()
+    image_puller.clean()
     
 if __name__ == '__main__':
     main()
