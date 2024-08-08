@@ -6,8 +6,8 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY poetry.lock .
 
-RUN poetry install
+RUN poetry config virtualenvs.create false && poetry install
 
 COPY . .
 
-ENTRYPOINT ["poetry", "run", "python", "main.py"]
+ENTRYPOINT ["python", "main.py"]
